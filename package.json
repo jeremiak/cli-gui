@@ -1,0 +1,24 @@
+{
+  "name": "cli-gui",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "dependencies": {
+    "ansi-html-stream": "0.0.3",
+    "dockerode": "^2.5.8",
+    "express": "^4.17.1",
+    "lodash.flatten": "^4.4.0",
+    "stream-ansi2html": "^1.1.0"
+  },
+  "devDependencies": {
+    "nodemon": "^1.19.1"
+  },
+  "scripts": {
+    "start": "node",
+    "dev": "nodemon",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}
