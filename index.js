@@ -23,7 +23,10 @@ app.get('/status.json', (req, res) => {
 app.get('/tools', (req, res) => {
   const html = `
     <link rel="stylesheet" href="/main.css">
-    <nav><a href="/tools">Tools</a></nav>
+    <nav>
+      <a href="/tools">Tools</a>
+      <a href="https://github.com/jeremiak/cli-gui">About</a>
+    </nav>
     <h1>Registered tools</h1>
     <ul id="tools">
       ${tools.map(({ description, id, image }) => {
@@ -35,6 +38,9 @@ app.get('/tools', (req, res) => {
         `
       }).join('')}
     </ul>
+    <footer>
+      💫
+    </footer>
   `
 
   res.send(html)
@@ -73,7 +79,7 @@ app.get('/tool/:toolId', (req, res) => {
     <script>const format = (${format.toString()})</script>
     <nav>
       <a href="/tools">Tools</a>
-      <a>About</a>
+      <a href="https://github.com/jeremiak/cli-gui">About</a>
     </nav>
     <h1>${id}</h1>
     <p>${description}</p>
@@ -129,6 +135,9 @@ app.get('/tool/:toolId', (req, res) => {
       </script>
 
     </section>
+    <footer>
+      💫
+    </footer>
   `
 
   res.send(form)

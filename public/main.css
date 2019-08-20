@@ -80,3 +80,8 @@ ul {
   font-size: .9rem;
   vertical-align: middle;
 }
+footer {
+  font-size: 1.1rem;
+  width: 100%;
+  text-align: center;
+}
