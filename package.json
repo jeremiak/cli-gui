@@ -15,12 +15,12 @@
     "nodemon": "^1.19.1"
   },
   "scripts": {
-    "start": "node",
-    "dev": "nodemon",
+    "start": "node index.js",
+    "dev": "nodemon index.js",
     "test": "echo \"Error: no test specified\" && exit 1",
     "build-docker": "cd Dockerfiles && for dockerfile in ./*; do docker build -t $(basename $dockerfile) -f $dockerfile .; done; cd -"
   },
   "keywords": [],
-  "author": "",
+  "author": "@jeremiak",
   "license": "ISC"
 }

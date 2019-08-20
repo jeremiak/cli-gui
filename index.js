@@ -14,6 +14,12 @@ const { tools } = config
 
 app.use(express.static('public'))
 
+const startTime = new Date()
+
+app.get('/status.json', (req, res) => {
+  res.json({ startTime })
+})
+
 app.get('/tools', (req, res) => {
   const html = `
     <link rel="stylesheet" href="/main.css">
