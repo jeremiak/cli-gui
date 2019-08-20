@@ -4,11 +4,12 @@
   "description": "",
   "main": "index.js",
   "dependencies": {
-    "ansi-html-stream": "0.0.3",
+    "ansi_up": "^4.0.4",
     "dockerode": "^2.5.8",
     "express": "^4.17.1",
     "lodash.flatten": "^4.4.0",
-    "stream-ansi2html": "^1.1.0"
+    "stream-ansi2html": "^1.1.0",
+    "stream-transform": "^2.0.1"
   },
   "devDependencies": {
     "nodemon": "^1.19.1"

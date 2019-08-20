@@ -1,0 +1,82 @@
+html {
+  font-size: 18px;
+}
+body {
+  padding: 1rem;
+  margin: 1rem auto;
+  width: 80%;
+}
+nav, h1, h2, h3, h4, h5, h6 {
+  font-family: sans-serif;
+}
+nav {
+  text-align: right;
+}
+nav a {
+  color: purple;
+  font-size: 1.5rem;
+  margin-right: 1rem;
+  text-decoration: none;
+}
+section {
+  /* border: 3px solid salmon; */
+  margin-bottom: 1rem;
+}
+section h2 {
+  border-bottom: 3px solid salmon;
+  padding-top: .25rem;
+  padding-bottom: .25rem;
+  width: 100%;
+}
+button {
+  border: 3px solid purple;
+  background-color: salmon;
+  cursor: pointer;
+  display: block;
+  font-family: sans-serif;
+  font-size: 1.75rem;
+  margin-top: 1.25rem;
+  margin-left: auto;
+  margin-right: auto;
+  padding: .25rem .75rem;
+}
+input[type="text"] {
+  background-color: salmon;
+  border: 3px solid transparent;
+  border-bottom-color: purple;
+  font-size: 1.1rem;
+  margin: 0 .5rem;
+  padding: .25rem .75rem;
+}
+input[type="text"]:focus {
+  border: 3px solid purple;
+}
+legend {
+  font-size: 1.1rem;
+}
+label {
+  display: block;
+}
+iframe {
+  background-color: purple;
+  border: 3px solid gold;
+  min-height: 650px;
+  width: 100%;
+}
+ul {
+  list-style-type: none;
+  padding-left: 0;
+}
+#tools a {
+  color: purple;
+  font-family: sans-serif;
+  font-size: 1.5rem;
+  text-decoration: none;
+}
+#tools p {
+  font-size: 1.1rem;
+}
+#tools code {
+  font-size: .9rem;
+  vertical-align: middle;
+}

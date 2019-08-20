@@ -3,24 +3,23 @@ const config = {
     {
       id: 'alpine',
       image: 'alpine:latest',
-      description: 'Some text can go here',
+      description: 'This is just linux.',
       fields: [
         {
-          name: 'username',
-          label: 'Enter username for search query',
+          name: 'command',
+          label: 'Enter a linux bash command',
           defaultValue: '',
           type: 'string',
         },
       ],
       format: (fields) => {
-        const { username } = fields
-        return 'ls /'
+        return fields.command
       }
     },
     {
       id: 'sherlock',
       image: 'sherlock:latest',
-      description: 'Some text can go here',
+      description: 'Sherlock is a tool for searching for a username across many social networks',
       fields: [
         {
           name: 'username',
@@ -35,8 +34,9 @@ const config = {
       }
     },
     {
-      id: 'test',
+      id: 'node',
       image: 'node:10',
+      description: 'Node version 10',
       fields: [
         {
           name: '$1',

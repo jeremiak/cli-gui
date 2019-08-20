@@ -1,23 +1,29 @@
-const ansi = require('ansi-html-stream')
+const { default: Ansi } = require('ansi_up')
 const express = require('express')
 const flatten = require('lodash.flatten')
+const transform = require('stream-transform')
 
 const config = require('./config')
 const { listImageRepoTags, run, pullAsync } = require('./docker')
 
+const ansi = new Ansi()
 const app = express()
 const port = 3000
 
 const { tools } = config
 
+app.use(express.static('public'))
+
 app.get('/tools', (req, res) => {
   const html = `
-    <h1>Registered apps</h1>
-    <ul>
-      ${tools.map(({ id, description }) => {
+    <link rel="stylesheet" href="/main.css">
+    <nav><a href="/tools">Tools</a></nav>
+    <h1>Registered tools</h1>
+    <ul id="tools">
+      ${tools.map(({ description, id, image }) => {
         return `
           <li>
-            <a href="/tool/${id}">${id}</a>
+            <a href="/tool/${id}">${id} (<code>${image}</code>)</a>
             <p>${description}</p>
           </li>
         `
@@ -57,22 +63,12 @@ app.get('/tool/:toolId', (req, res) => {
   }
 
   const form = `
-    <style>
-      iframe {
-        min-height: 300px;
-        width: 80%;
-      }
-      legend {
-        font-size: 21px;
-      }
-      label {
-        display: block;
-      }
-      button {
-        display: block;
-      }
-    </style>
+    <link rel="stylesheet" href="/main.css">
     <script>const format = (${format.toString()})</script>
+    <nav>
+      <a href="/tools">Tools</a>
+      <a>About</a>
+    </nav>
     <h1>${id}</h1>
     <p>${description}</p>
     <section>
@@ -115,10 +111,17 @@ app.get('/tool/:toolId', (req, res) => {
       <h2>Output</h2>
       <iframe id="${id}-output"></iframe>
       <script>
-        const iframe = document.querySelector('#${id}-output')
-        iframe.onmessage(msg => {
-          console.log({ msg })
+        const iframe = document.querySelector("#${id}-output") 
+
+        window.addEventListener('message', ({ data }) => {
+          if (data !== 'done') return
+
+          document.querySelector('button').removeAttribute('disabled')
         })
+
+        
+      </script>
+
     </section>
   `
 
@@ -129,18 +132,35 @@ app.get('/run/:image', (req, res) => {
   const { image } = req.params
   const { command: urlCommand } = req.query
   const command = urlCommand ? urlCommand.split(' ') : ['']
-  res.write(`Running ${image} with ${command.join(' ')}\n`)
+  const transformer = transform((d) => {
+    const html = d.split('\n').forEach(chunk => {
+      res.write(`<br>${ansi.ansi_to_html(chunk)}`)
+    })
+  })
+
+  transformer.on('finish', () => {
+    res.write('<br><br>Finished')
+    res.end()
+  })
+
+  res.type('html')
   res.write(`
     <script>
       document.addEventListener('DOMContentLoaded', (e) => {
-        window.location.href = '/tools'
+        parent.postMessage('done')
       })
     </script>
+    <style>
+    html { background-color: #ccc; }
+    * { font-family: monospace; }
+    </style>
   `)
+  res.write(`Running ${image} with "${command.join(' ')}"<br><br>`)
+
   run({
     image,
     command,
-    stream: res,
+    stream: transformer,
   })
 })
 
