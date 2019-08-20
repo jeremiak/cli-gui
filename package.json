@@ -16,7 +16,8 @@
   "scripts": {
     "start": "node",
     "dev": "nodemon",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build-docker": "cd Dockerfiles && for dockerfile in ./*; do docker build -t $(basename $dockerfile) -f $dockerfile .; done; cd -"
   },
   "keywords": [],
   "author": "",

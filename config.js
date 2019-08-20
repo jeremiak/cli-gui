@@ -1,5 +1,5 @@
 const config = {
-  apps: [
+  tools: [
     {
       id: 'alpine',
       image: 'alpine:latest',

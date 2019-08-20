@@ -8,17 +8,17 @@ const { listImageRepoTags, run, pullAsync } = require('./docker')
 const app = express()
 const port = 3000
 
-const { apps } = config
+const { tools } = config
 
-app.get('/apps', (req, res) => {
+app.get('/tools', (req, res) => {
   const html = `
     <h1>Registered apps</h1>
     <ul>
-      ${apps.map(app => {
+      ${tools.map(({ id, description }) => {
         return `
           <li>
-            <a href="/app/${app.id}">${app.id}</a>
-            <p>${app.description}</p>
+            <a href="/tool/${id}">${id}</a>
+            <p>${description}</p>
           </li>
         `
       }).join('')}
@@ -28,12 +28,12 @@ app.get('/apps', (req, res) => {
   res.send(html)
 })
 
-app.get('/app/:appId', (req, res) => {
-  const { appId } = req.params
-  const matchingApp = apps.find(a => a.id.toLowerCase() === appId.toLowerCase())
-  if (!matchingApp) return res.sendStatus(404)
+app.get('/tool/:toolId', (req, res) => {
+  const { toolId } = req.params
+  const matchingTool = tools.find(a => a.id.toLowerCase() === toolId.toLowerCase())
+  if (!matchingTool) return res.sendStatus(404)
 
-  const { fields, format, image } = matchingApp
+  const { id, description, fields, format, image } = matchingTool
 
   function onSubmit (event) {
     event.preventDefault();
@@ -73,8 +73,8 @@ app.get('/app/:appId', (req, res) => {
       }
     </style>
     <script>const format = (${format.toString()})</script>
-    <h1>${matchingApp.id}</h1>
-    <p>${matchingApp.description}</p>
+    <h1>${id}</h1>
+    <p>${description}</p>
     <section>
       <h2>Input</h2>
       <form action="/run/${image}" onsubmit="(${onSubmit.toString()})(event)">
@@ -113,9 +113,9 @@ app.get('/app/:appId', (req, res) => {
     </section>
     <section>
       <h2>Output</h2>
-      <iframe id="${matchingApp.id}-output"></iframe>
+      <iframe id="${id}-output"></iframe>
       <script>
-        const iframe = document.querySelector('#${matchingApp.id}-output')
+        const iframe = document.querySelector('#${id}-output')
         iframe.onmessage(msg => {
           console.log({ msg })
         })
@@ -130,6 +130,13 @@ app.get('/run/:image', (req, res) => {
   const { command: urlCommand } = req.query
   const command = urlCommand ? urlCommand.split(' ') : ['']
   res.write(`Running ${image} with ${command.join(' ')}\n`)
+  res.write(`
+    <script>
+      document.addEventListener('DOMContentLoaded', (e) => {
+        window.location.href = '/tools'
+      })
+    </script>
+  `)
   run({
     image,
     command,
@@ -138,15 +145,15 @@ app.get('/run/:image', (req, res) => {
 })
 
 
-console.log('Checking for docker images by apps')
+console.log('Checking for docker images by tools')
 listImageRepoTags()
   .then(repoTags => {
     const tags = flatten(repoTags)
     const pulls = []
 
-    console.log(`Found ${apps.length} apps and ${tags.length} repo tags`)
-    apps.forEach(app => {
-      const { image } = app
+    console.log(`Found ${tools.length} tools and ${tags.length} repo tags`)
+    tools.forEach(tool => {
+      const { image } = tool
 
       if (tags.includes(image)) return
 
@@ -154,7 +161,7 @@ listImageRepoTags()
     })
 
     if (pulls.length) {
-      console.log(`Installing any images required for the apps`)
+      console.log(`Installing any images required for the tools`)
     } else {
       console.log(`All images are already pulled`)
     }
