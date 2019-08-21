@@ -87,16 +87,20 @@ app.get('/tool/:toolId', (req, res) => {
       <h2>Input</h2>
       <form action="/run/${image}" onsubmit="(${onSubmit.toString()})(event)">
         ${fields.map(field => {
-          const { defaultValue, label, name, type } = field
+          const { defaultValue, label, name, required, type } = field
 
           switch(type) {
             case 'select':
+              if (!field.options) {
+                throw new Error('The options are required for select fields')
+              }
               return `
                  <label>
-                  ${label || name}
-                  <select name="${name}">
+                  ${label || name} ${required ? '(required)' : ''}
+                  <select name="${name}" ${required && 'required'}>
+                    <option></option>
                     ${field.options.map(option => {
-                      if (!option.label) return `<option>${option.value}</option>`
+                      if (!option.label) return `<option>${option}</option>`
 
                       return `
                         <option value="${option.value}">
@@ -107,11 +111,23 @@ app.get('/tool/:toolId', (req, res) => {
                   </select>
                 </label>
               `
+            case 'date':
+              return `
+                <label>
+                  ${label || name} ${required ? '(required)' : ''}
+                  <input name="${name}" type="date" ${required && 'required'} >
+                </label>
+              `
             default:
               return `
                 <label>
-                  ${label || name}
-                  <input type="text" name="${name}" default="${defaultValue}">
+                  ${label || name} ${required ? '(required)' : ''}
+                  <input
+                    type="text"
+                    name="${name}"
+                    default="${defaultValue}"
+                    ${required && 'required'}
+                  >
                 </label>
               `
           }
@@ -121,7 +137,11 @@ app.get('/tool/:toolId', (req, res) => {
     </section>
     <section>
       <h2>Output</h2>
-      <iframe id="${id}-output"></iframe>
+      <iframe
+        aria-live="polite"
+        id="${id}-output"
+        title="Output for the ${id} tool"
+      ></iframe>
       <script>
         const iframe = document.querySelector("#${id}-output") 
 
