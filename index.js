@@ -186,7 +186,7 @@ app.get('/run/:image', (req, res) => {
       })
     </script>
     <style>
-    html { background-color: #ccc; }
+    html { background-color: LightCyan; }
     * { font-family: monospace; }
     </style>
   `)
@@ -197,6 +197,10 @@ app.get('/run/:image', (req, res) => {
     command,
     stream: transformer,
   })
+})
+
+app.get('/', (req, res) => {
+  res.redirect('/tools')
 })
 
 

@@ -66,6 +66,18 @@ iframe {
   min-height: 650px;
   width: 100%;
 }
+iframe:not([src]) {
+  background-color: white;
+}
+iframe:not([src])::after {
+  content: "Something goes here";
+  display: block;
+  font-size: 3rem;
+  color: black;
+  position: fixed;
+  top: 20%;
+  right: 20%;
+}
 ul {
   list-style-type: none;
   padding-left: 0;
@@ -76,7 +88,8 @@ ul {
   font-size: 1.5rem;
   text-decoration: none;
 }
-#tools p {
+#tools p,
+#tools p a {
   font-size: 1.1rem;
 }
 #tools code {
