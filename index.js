@@ -50,26 +50,6 @@ app.get('/tools', (req, res) => {
   res.send(html)
 })
 
-app.post('/upload', (req, res) => {
-  if (!req.busboy) {
-    return res.end()
-  }
-
-  const streamId = uuid()
-  const transformer = transform(d => d)
-  
-  req.pipe(req.busboy)
-  
-  req.busboy.on('file', (fieldname, file, filename) => {
-    streamPool[streamId] = {
-      name: filename,
-      stream: file.pipe(transformer)
-    }
-  })
-
-  res.json({ streamId })
-})
-
 app.get('/tool/:toolId', (req, res) => {
   const { toolId } = req.params
   const matchingTool = tools.find(a => a.id.toLowerCase() === toolId.toLowerCase())
@@ -241,6 +221,7 @@ app.get('/run/:image', (req, res) => {
 
   res.type('html')
   res.write(`
+    <link rel="stylesheet" href="/iframe.css">
     <script>
       document.addEventListener('DOMContentLoaded', (e) => {
         parent.postMessage({ type: 'done' })
@@ -252,10 +233,6 @@ app.get('/run/:image', (req, res) => {
         parent.postMessage({ type: 'content:got', content })
       })
     </script>
-    <style>
-    html { background-color: LightCyan; }
-    * { font-family: monospace; }
-    </style>
   `)
   let beginning = `Running ${image} with "${command.join(' ')}"`
   if (streamId) {
@@ -280,6 +257,26 @@ app.get('/run/:image', (req, res) => {
     // so does that mean we can clean up a stream?
     if (streamId) delete streamPool[streamId]
   })
+})
+
+app.post('/upload', (req, res) => {
+  if (!req.busboy) {
+    return res.end()
+  }
+
+  const streamId = uuid()
+  const transformer = transform(d => d)
+
+  req.pipe(req.busboy)
+
+  req.busboy.on('file', (fieldname, file, filename) => {
+    streamPool[streamId] = {
+      name: filename,
+      stream: file.pipe(transformer)
+    }
+  })
+
+  res.json({ streamId })
 })
 
 app.get('/', (req, res) => {
