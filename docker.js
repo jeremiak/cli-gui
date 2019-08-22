@@ -43,9 +43,58 @@ const listImageRepoTags = async () => {
 }
 const run = ({ image, command, stream }) => docker.run(image, command, stream)
 
+
+const runWithPipedInStream = ({ image, command, inStream, outStream }) => {
+  const containerOpts = {
+    AttachStdin: true,
+    AttachStdout: true,
+    AttachStderr: true,
+    Tty: false,
+    OpenStdin: true,
+    StdinOnce: true,
+    Cmd: command,
+    Image: image
+  }
+  const attachOpts = {
+    hijack: true,
+    stream: true,
+    stdin: true,
+    stdout: true,
+    stderr: true,
+  }
+
+  return new Promise((resolve, reject) => {
+    docker.createContainer(containerOpts, (createErr, container) => {
+      if (createErr) {
+        return reject(createErr)
+      }
+      container.attach(attachOpts, (attachErr, stream) => {
+        if (attachErr) {
+          return reject(attachErr)
+        }
+
+        stream.pipe(outStream)
+
+        container.start((startErr) => {
+          outStream.on('finish', () => { resolve() })
+          if (startErr) {
+            return reject(startErr)
+          }
+          inStream.pipe(stream)
+
+          container.wait(() => {
+            resolve()
+          })
+        })
+      })
+    })
+  })
+}
+
 module.exports = {
   docker,
   run,
+  runWithPipedInStream,
   listImageRepoTags,
   pullAsync,
 }

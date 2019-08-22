@@ -12,8 +12,8 @@ const config = {
           type: 'text',
         },
         {
-          name: 'afile',
-          label: 'Trying to get file uploads to work',
+          name: 'alpine-file',
+          label: 'You can upload files too!',
           type: 'file',
         },
       ],

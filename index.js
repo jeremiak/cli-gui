@@ -6,7 +6,7 @@ const transform = require('stream-transform')
 const uuid = require('uuid/v1')
 
 const config = require('./config')
-const { listImageRepoTags, run, pullAsync } = require('./docker')
+const { listImageRepoTags, run, runWithPipedInStream, pullAsync } = require('./docker')
 
 const ansi = new Ansi()
 const app = express()
@@ -208,7 +208,8 @@ app.get('/run/:image', (req, res) => {
   const { image } = req.params
   const { command: urlCommand, streamId } = req.query
   const command = urlCommand ? urlCommand.split(' ') : ['']
-  const transformer = transform((d) => {
+  const transformer = transform((buffer) => {
+    const d = buffer.toString()
     d.split('\n').forEach(chunk => {
       res.write(`<br>${ansi.ansi_to_html(chunk)}`)
     })
@@ -236,27 +237,29 @@ app.get('/run/:image', (req, res) => {
   `)
   let beginning = `Running ${image} with "${command.join(' ')}"`
   if (streamId) {
-    beginning += ` and stream ${streamId} (${streamPool[streamId].name})`
+    beginning += ` and stream ${streamId} (${streamPool[streamId].name}) as stdin`
   }
   beginning += '<br><br><div id="output">'
   res.write(beginning)
 
-  // TODO actually pipe in the stream instead of just showing
-  // the contents
-
   if (streamId) {
-    streamPool[streamId].stream.pipe(process.stdout)
+    runWithPipedInStream({
+      image,
+      command,
+      inStream: streamPool[streamId].stream,
+      outStream: transformer,
+    }).then(() => {
+      delete streamPool[streamId]
+    }).catch(e => {
+      console.error(e)
+    })
+  } else {
+    run({
+      image,
+      command,
+      stream: transformer,
+    })
   }
-
-  run({
-    image,
-    command,
-    stream: transformer,
-  }).then(() => {
-    // theoretically if we're here, then its done running?
-    // so does that mean we can clean up a stream?
-    if (streamId) delete streamPool[streamId]
-  })
 })
 
 app.post('/upload', (req, res) => {
@@ -282,10 +285,6 @@ app.post('/upload', (req, res) => {
 app.get('/', (req, res) => {
   res.redirect('/tools')
 })
-
-// setInterval(() => {
-//   console.log({ streamPool })
-// }, 2000)
 
 console.log('Checking for docker images by tools')
 listImageRepoTags()
