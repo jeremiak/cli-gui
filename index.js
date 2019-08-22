@@ -67,7 +67,10 @@ app.get('/tool/:toolId', (req, res) => {
     const files = [];
     let streamId;
 
-    form.querySelector('button').setAttribute('disabled', 'true')
+    const button = document.querySelector('button')
+    const iframe = document.querySelector(`iframe`);
+    
+    button.setAttribute('disabled', 'true')
 
     for (var i = 0; i < elements.length; i++) {
       let element = elements[i];
@@ -80,22 +83,26 @@ app.get('/tool/:toolId', (req, res) => {
       }
     }
 
+    const originalButtonText = button.innerText
     if (files.length > 0) {
       const fileData = new FormData()
       files.forEach(({ name, file }) => {
         fileData.append(name, file);
       })
+      
+      button.innerText = 'Uploading'
       await axios.post('/upload', fileData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
       }).then(({ data }) => {
+        button.innerText = originalButtonText
         streamId = data.streamId
       })
     }
 
     const formatted = format(data);
-    const iframe = document.querySelector(`iframe`);
+    
     let url = `${action}?command=${formatted}`;
 
     if (streamId) {
