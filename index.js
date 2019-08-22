@@ -1,7 +1,9 @@
 const { default: Ansi } = require('ansi_up')
+const busboy = require('connect-busboy')
 const express = require('express')
 const flatten = require('lodash.flatten')
 const transform = require('stream-transform')
+const uuid = require('uuid/v1')
 
 const config = require('./config')
 const { listImageRepoTags, run, pullAsync } = require('./docker')
@@ -13,8 +15,10 @@ const port = 3000
 const { tools } = config
 
 app.use(express.static('public'))
+app.use(busboy())
 
 const startTime = new Date()
+const streamPool = {}
 
 app.get('/status.json', (req, res) => {
   res.json({ startTime })
@@ -46,6 +50,26 @@ app.get('/tools', (req, res) => {
   res.send(html)
 })
 
+app.post('/upload', (req, res) => {
+  if (!req.busboy) {
+    return res.end()
+  }
+
+  const streamId = uuid()
+  const transformer = transform(d => d)
+  
+  req.pipe(req.busboy)
+  
+  req.busboy.on('file', (fieldname, file, filename) => {
+    streamPool[streamId] = {
+      name: filename,
+      stream: file.pipe(transformer)
+    }
+  })
+
+  res.json({ streamId })
+})
+
 app.get('/tool/:toolId', (req, res) => {
   const { toolId } = req.params
   const matchingTool = tools.find(a => a.id.toLowerCase() === toolId.toLowerCase())
@@ -53,23 +77,51 @@ app.get('/tool/:toolId', (req, res) => {
 
   const { id, description, fields, format, image } = matchingTool
 
-  function onSubmit (event) {
+  async function onSubmit (event) {
     event.preventDefault();
 
     const form = event.target
     const { action, elements } = form;
+
     const data = {};
+    const files = [];
+    let streamId;
 
     form.querySelector('button').setAttribute('disabled', 'true')
 
     for (var i = 0; i < elements.length; i++) {
       let element = elements[i];
-      data[element.name] = encodeURIComponent(element.value);
+      if (element.type.toLowerCase() !== 'file') {
+        data[element.name] = encodeURIComponent(element.value);
+      } else {
+        Array.prototype.slice.call(element.files).forEach(f => {
+          files.push({ name: element.name, file: f })
+        })
+      }
+    }
+
+    if (files.length > 0) {
+      const fileData = new FormData()
+      files.forEach(({ name, file }) => {
+        fileData.append(name, file);
+      })
+      await axios.post('/upload', fileData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      }).then(({ data }) => {
+        streamId = data.streamId
+      })
     }
 
     const formatted = format(data);
-    const url = `${action}?command=${formatted}`;
-    const iframe = document.querySelector(`iframe`)
+    const iframe = document.querySelector(`iframe`);
+    let url = `${action}?command=${formatted}`;
+
+    if (streamId) {
+      url += `&streamId=${streamId}`;
+    }
+    
     iframe.src = url;
 
   }
@@ -88,15 +140,23 @@ app.get('/tool/:toolId', (req, res) => {
       <form action="/run/${image}" onsubmit="(${onSubmit.toString()})(event)">
         ${fields.map(field => {
           const { defaultValue, label, name, required, type } = field
+          const labelText = `${ label || name} ${ required ? '(required)': '' }`
 
           switch(type) {
+            case 'file':
+              return `
+                <label>
+                  ${labelText}
+                  <input type="file" name="${name}">
+                </label>
+              `
             case 'select':
               if (!field.options) {
                 throw new Error('The options are required for select fields')
               }
               return `
                  <label>
-                  ${label || name} ${required ? '(required)' : ''}
+                  ${labelText}
                   <select name="${name}" ${required && 'required'}>
                     <option></option>
                     ${field.options.map(option => {
@@ -114,14 +174,14 @@ app.get('/tool/:toolId', (req, res) => {
             case 'date':
               return `
                 <label>
-                  ${label || name} ${required ? '(required)' : ''}
+                  ${labelText}
                   <input name="${name}" type="date" ${required && 'required'} >
                 </label>
               `
             default:
               return `
                 <label>
-                  ${label || name} ${required ? '(required)' : ''}
+                  ${labelText}
                   <input
                     type="text"
                     name="${name}"
@@ -142,11 +202,12 @@ app.get('/tool/:toolId', (req, res) => {
         id="${id}-output"
         title="Output for the ${id} tool"
       ></iframe>
+      <script src="/axios.min.js"></script>
       <script>
         const iframe = document.querySelector("#${id}-output") 
 
         window.addEventListener('message', ({ data }) => {
-          if (data !== 'done') return
+          if (data.type !== 'done') return
 
           document.querySelector('button').removeAttribute('disabled')
         })
@@ -165,16 +226,16 @@ app.get('/tool/:toolId', (req, res) => {
 
 app.get('/run/:image', (req, res) => {
   const { image } = req.params
-  const { command: urlCommand } = req.query
+  const { command: urlCommand, streamId } = req.query
   const command = urlCommand ? urlCommand.split(' ') : ['']
   const transformer = transform((d) => {
-    const html = d.split('\n').forEach(chunk => {
+    d.split('\n').forEach(chunk => {
       res.write(`<br>${ansi.ansi_to_html(chunk)}`)
     })
   })
 
   transformer.on('finish', () => {
-    res.write('<br><br>Finished')
+    res.write('</div><br><br>Finished')
     res.end()
   })
 
@@ -182,7 +243,13 @@ app.get('/run/:image', (req, res) => {
   res.write(`
     <script>
       document.addEventListener('DOMContentLoaded', (e) => {
-        parent.postMessage('done')
+        parent.postMessage({ type: 'done' })
+      })
+      window.addEventListener('message', ({ data }) => {
+        if (data.type !== 'content:get') return
+
+        const content = document.querySelector('#output').innerText
+        parent.postMessage({ type: 'content:got', content })
       })
     </script>
     <style>
@@ -190,12 +257,28 @@ app.get('/run/:image', (req, res) => {
     * { font-family: monospace; }
     </style>
   `)
-  res.write(`Running ${image} with "${command.join(' ')}"<br><br>`)
+  let beginning = `Running ${image} with "${command.join(' ')}"`
+  if (streamId) {
+    beginning += ` and stream ${streamId} (${streamPool[streamId].name})`
+  }
+  beginning += '<br><br><div id="output">'
+  res.write(beginning)
+
+  // TODO actually pipe in the stream instead of just showing
+  // the contents
+
+  if (streamId) {
+    streamPool[streamId].stream.pipe(process.stdout)
+  }
 
   run({
     image,
     command,
     stream: transformer,
+  }).then(() => {
+    // theoretically if we're here, then its done running?
+    // so does that mean we can clean up a stream?
+    if (streamId) delete streamPool[streamId]
   })
 })
 
@@ -203,6 +286,9 @@ app.get('/', (req, res) => {
   res.redirect('/tools')
 })
 
+// setInterval(() => {
+//   console.log({ streamPool })
+// }, 2000)
 
 console.log('Checking for docker images by tools')
 listImageRepoTags()

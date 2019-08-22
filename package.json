@@ -5,11 +5,13 @@
   "main": "index.js",
   "dependencies": {
     "ansi_up": "^4.0.4",
+    "connect-busboy": "0.0.2",
     "dockerode": "^2.5.8",
     "express": "^4.17.1",
     "lodash.flatten": "^4.4.0",
     "stream-ansi2html": "^1.1.0",
-    "stream-transform": "^2.0.1"
+    "stream-transform": "^2.0.1",
+    "uuid": "^3.3.3"
   },
   "devDependencies": {
     "nodemon": "^1.19.1"

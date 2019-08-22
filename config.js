@@ -11,6 +11,11 @@ const config = {
           defaultValue: '',
           type: 'text',
         },
+        {
+          name: 'afile',
+          label: 'Trying to get file uploads to work',
+          type: 'file',
+        },
       ],
       format: (fields) => {
         return fields.command
