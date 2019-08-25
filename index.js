@@ -1,4 +1,5 @@
 const { default: Ansi } = require('ansi_up')
+const bodyParser = require('body-parser')
 const busboy = require('connect-busboy')
 const express = require('express')
 const flatten = require('lodash.flatten')
@@ -16,9 +17,15 @@ const { tools } = config
 
 app.use(express.static('public'))
 app.use(busboy())
+app.use(bodyParser.json())
 
 const startTime = new Date()
-const streamPool = {}
+
+// files stores filename to streamId matches
+const files = {}
+// streams store the active streams that are piped
+// from the upload to the container
+const streams = {}
 
 app.get('/status.json', (req, res) => {
   res.json({ startTime })
@@ -70,6 +77,7 @@ app.get('/tool/:toolId', (req, res) => {
     const button = document.querySelector('button')
     const iframe = document.querySelector(`iframe`);
     
+    button.innerText = 'Running...'
     button.setAttribute('disabled', 'true')
 
     for (var i = 0; i < elements.length; i++) {
@@ -86,12 +94,13 @@ app.get('/tool/:toolId', (req, res) => {
     const originalButtonText = button.innerText
     if (files.length > 0) {
       const fileData = new FormData()
-      files.forEach(({ name, file }) => {
-        fileData.append(name, file);
-      })
-      
+      const { name, file } = files[0];
+      const { name: filename } = file
+      fileData.append(name, file);
       button.innerText = 'Uploading'
-      await axios.post('/upload', fileData, {
+      const streamIdRequest = await axios.post('/upload', { filename })
+      streamId = streamIdRequest.data.streamId
+      axios.post(`/upload/${streamId}`, fileData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
@@ -196,7 +205,9 @@ app.get('/tool/:toolId', (req, res) => {
         window.addEventListener('message', ({ data }) => {
           if (data.type !== 'done') return
 
-          document.querySelector('button').removeAttribute('disabled')
+          const button = document.querySelector('form button')
+          button.innerText = 'Run again'
+          button.removeAttribute('disabled')
         })
 
         
@@ -234,6 +245,9 @@ app.get('/run/:image', (req, res) => {
       document.addEventListener('DOMContentLoaded', (e) => {
         parent.postMessage({ type: 'done' })
       })
+      window.addEventListener('resize', () => {
+        console.log('aaa')
+      })
       window.addEventListener('message', ({ data }) => {
         if (data.type !== 'content:get') return
 
@@ -244,7 +258,7 @@ app.get('/run/:image', (req, res) => {
   `)
   let beginning = `Running ${image} with "${command.join(' ')}"`
   if (streamId) {
-    beginning += ` and stream ${streamId} (${streamPool[streamId].name}) as stdin`
+    beginning += ` and stream ${streamId} (${streams[streamId].name}) as stdin`
   }
   beginning += '<br><br><div id="output">'
   res.write(beginning)
@@ -253,10 +267,10 @@ app.get('/run/:image', (req, res) => {
     runWithPipedInStream({
       image,
       command,
-      inStream: streamPool[streamId].stream,
+      inStream: streams[streamId].stream,
       outStream: transformer,
     }).then(() => {
-      delete streamPool[streamId]
+      delete streams[streamId]
     }).catch(e => {
       console.error(e)
     })
@@ -270,22 +284,38 @@ app.get('/run/:image', (req, res) => {
 })
 
 app.post('/upload', (req, res) => {
+  const streamId = uuid()
+  const { filename } = req.body
+
+  files[filename] = streamId
+  res.json({ streamId })
+})
+
+app.post('/upload/:uuid', (req, res) => {
   if (!req.busboy) {
     return res.end()
   }
 
-  const streamId = uuid()
-  const transformer = transform(d => d)
-
-  req.pipe(req.busboy)
+  let i = 0
+  const { uuid: streamId } = req.params
+  const transformer = transform(d => {
+    i += 1
+    return d
+  })
 
   req.busboy.on('file', (fieldname, file, filename) => {
-    streamPool[streamId] = {
+    const match = files[filename]
+    if (match !== streamId) {
+      res.status(400).json({ message: `${streamId} is not the UUID for ${filename}`})
+      return
+    }
+    streams[streamId] = {
       name: filename,
       stream: file.pipe(transformer)
     }
   })
 
+  req.pipe(req.busboy)
   res.json({ streamId })
 })
 

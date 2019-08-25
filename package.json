@@ -5,6 +5,7 @@
   "main": "index.js",
   "dependencies": {
     "ansi_up": "^4.0.4",
+    "body-parser": "^1.19.0",
     "connect-busboy": "0.0.2",
     "dockerode": "^2.5.8",
     "express": "^4.17.1",
