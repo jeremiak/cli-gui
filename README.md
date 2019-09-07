@@ -41,3 +41,10 @@ options (optional) | array | An array of strings that will be <option> elements 
 ### Work on `cli-gui` itself
 
 Using this enough that you want to help out? Great! I'm not really sure what I'm doing so have at it and open an issue or a pull request with the kind of stuff you want to add/change/remove/refactor.
+
+To get it up and running, make sure you have a version of Docker running and have `nvm` installed.
+
+1. `$ nvm use`
+1. `$ npm install`
+1. `$ npm run build-docker`
+1. `$ npm start`
